@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sticky Notes Board</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1 class="logo">Sticky Notes</h1>
+      <button id="new-note-btn" class="btn primary">+ Yeni Not</button>
+    </header>
+
+    <main class="board" id="board" aria-label="Sticky notes board"></main>
+
+    <aside class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <h2>Not Düzenle</h2>
+        <button class="btn ghost" id="drawer-close" aria-label="Kapat">✕</button>
+      </div>
+      <form id="edit-form" class="drawer-body">
+        <label class="field">
+          <span>Başlık</span>
+          <input type="text" id="note-title" maxlength="60" />
+        </label>
+        <label class="field">
+          <span>İçerik</span>
+          <textarea id="note-content" rows="4" maxlength="140"></textarea>
+        </label>
+        <div class="field">
+          <span>Renk</span>
+          <div class="color-picker" id="color-picker"></div>
+        </div>
+        <label class="field">
+          <span>Genişlik (px)</span>
+          <input type="number" id="note-width" min="140" max="360" />
+        </label>
+        <label class="field">
+          <span>Yükseklik (px)</span>
+          <input type="number" id="note-height" min="140" max="360" />
+        </label>
+        <label class="field">
+          <span>Açı (deg)</span>
+          <input type="range" id="note-rotation" min="-10" max="10" value="0" />
+        </label>
+        <label class="field">
+          <span>Opaklık</span>
+          <input type="range" id="note-opacity" min="0.4" max="1" step="0.05" value="1" />
+        </label>
+        <button type="submit" class="btn primary full">Kaydet</button>
+      </form>
+    </aside>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
