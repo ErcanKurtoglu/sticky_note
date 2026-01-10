@@ -1,7 +1,7 @@
 const config = {
-  baseUrl: "https://tznmhdzsysuavvcsolpj.supabase.co/rest/v1",
-  token: "sb_publishable_dGsNuj9LEJALW3o1wdsLaQ_aOKEIG1O",
-  moduleName: "notes",
+  baseUrl: "https://socket.supsis.live/api/customer/v1/module",
+  token: "YOUR_SUPSIS_TOKEN",
+  moduleName: "sticky_notes",
 };
 
 const board = document.getElementById("board");
@@ -40,7 +40,6 @@ async function request(url, options = {}) {
   };
   if (config.token) {
     headers.Authorization = `Bearer ${config.token}`;
-    headers.apikey = config.token;
   }
 
   const response = await fetch(url, {
@@ -63,36 +62,30 @@ async function request(url, options = {}) {
   return response.json();
 }
 
+function getRecordsPath() {
+  return `${config.moduleName}/records`;
+}
+
 async function listNotes() {
-  const tablePath = config.moduleName;
-  return request(buildUrl(tablePath, "select=*"));
+  return request(buildUrl(getRecordsPath(), "offset=0&limit=100"));
 }
 
 async function createNote(payload) {
-  const tablePath = config.moduleName;
-  return request(buildUrl(tablePath), {
-    method: "POST",
+  return request(buildUrl(getRecordsPath()), {
+    method: "PUT",
     body: JSON.stringify(payload),
-    headers: {
-      Prefer: "return=representation",
-    },
   });
 }
 
 async function updateNote(id, patch) {
-  const tablePath = config.moduleName;
-  return request(buildUrl(tablePath, `id=eq.${id}`), {
-    method: "PATCH",
+  return request(buildUrl(`${getRecordsPath()}/${id}`), {
+    method: "PUT",
     body: JSON.stringify(patch),
-    headers: {
-      Prefer: "return=representation",
-    },
   });
 }
 
 async function deleteNote(id) {
-  const tablePath = config.moduleName;
-  return request(buildUrl(tablePath, `id=eq.${id}`), {
+  return request(buildUrl(`${getRecordsPath()}/${id}`), {
     method: "DELETE",
   });
 }
@@ -311,7 +304,7 @@ async function handleSave(event) {
         ...patch,
       };
       const created = await createNote(payload);
-      const createdNote = Array.isArray(created) ? created[0] : created;
+      const createdNote = created?._id ? { ...created, id: created._id } : created;
       notes = [createdNote, ...notes].filter(Boolean);
     } else {
       const note = notes.find((item) => item.id === activeNoteId);
@@ -319,9 +312,8 @@ async function handleSave(event) {
         return;
       }
       const updated = await updateNote(note.id, patch);
-      const updatedNote = Array.isArray(updated) ? updated[0] : updated;
       notes = notes.map((item) =>
-        item.id === note.id ? { ...item, ...(updatedNote || patch) } : item
+        item.id === note.id ? { ...item, ...(updated?._id ? updated : patch) } : item
       );
     }
     renderNotes();
@@ -336,7 +328,7 @@ async function init() {
   setSelectedColor(COLORS[0]);
   try {
     const data = await listNotes();
-    notes = Array.isArray(data) ? data : data?.records || [];
+    notes = Array.isArray(data) ? data : data?.items || [];
     notes = notes.map((note) => ({
       title: "",
       content: "",
@@ -347,6 +339,7 @@ async function init() {
       color: COLORS[0],
       rotation: 0,
       opacity: 1,
+      id: note._id ?? note.id,
       ...note,
     }));
     renderNotes();
