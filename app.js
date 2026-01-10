@@ -25,6 +25,7 @@ let activeNoteId = null;
 let draggingNote = null;
 let dragOffset = { x: 0, y: 0 };
 let savePositionTimer = null;
+let draftNote = null;
 
 function buildUrl(path = "", query = "") {
   const trimmedBase = config.baseUrl.replace(/\/$/, "");
@@ -131,7 +132,7 @@ function renderNotes() {
     editBtn.textContent = "✎";
     editBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      openDrawer(note.id);
+      openDrawer(note);
     });
 
     const deleteBtn = document.createElement("button");
@@ -153,7 +154,7 @@ function renderNotes() {
     noteEl.append(header, content);
 
     noteEl.addEventListener("mousedown", (event) => startDrag(event, note.id));
-    noteEl.addEventListener("dblclick", () => openDrawer(note.id));
+    noteEl.addEventListener("dblclick", () => openDrawer(note));
 
     board.append(noteEl);
   });
@@ -182,19 +183,15 @@ function setSelectedColor(color) {
   });
 }
 
-function openDrawer(noteId) {
-  activeNoteId = noteId;
-  const note = notes.find((item) => item.id === noteId);
-  if (!note) {
-    return;
-  }
-  titleInput.value = note.title || "";
-  contentInput.value = note.content || "";
-  widthInput.value = note.width;
-  heightInput.value = note.height;
-  rotationInput.value = note.rotation;
-  opacityInput.value = note.opacity;
-  setSelectedColor(note.color);
+function openDrawer(note) {
+  activeNoteId = note?.id ?? null;
+  titleInput.value = note?.title || "";
+  contentInput.value = note?.content || "";
+  widthInput.value = note?.width ?? 200;
+  heightInput.value = note?.height ?? 200;
+  rotationInput.value = note?.rotation ?? 0;
+  opacityInput.value = note?.opacity ?? 1;
+  setSelectedColor(note?.color ?? COLORS[0]);
   drawer.classList.add("open");
   drawer.setAttribute("aria-hidden", "false");
 }
@@ -203,6 +200,7 @@ function closeDrawer() {
   drawer.classList.remove("open");
   drawer.setAttribute("aria-hidden", "true");
   activeNoteId = null;
+  draftNote = null;
 }
 
 function startDrag(event, noteId) {
@@ -235,9 +233,12 @@ function onDrag(event) {
   if (savePositionTimer) {
     window.clearTimeout(savePositionTimer);
   }
+  const pendingId = draggingNote.id;
+  const pendingX = draggingNote.x;
+  const pendingY = draggingNote.y;
   savePositionTimer = window.setTimeout(async () => {
     try {
-      await updateNote(draggingNote.id, { x: draggingNote.x, y: draggingNote.y });
+      await updateNote(pendingId, { x: pendingX, y: pendingY });
     } catch (error) {
       showToast("Konum kaydedilemedi");
     }
@@ -266,7 +267,7 @@ function getBoardCenter() {
 
 async function handleCreate() {
   const center = getBoardCenter();
-  const payload = {
+  draftNote = {
     title: "Yeni Not",
     content: "",
     x: Math.round(center.x),
@@ -277,14 +278,7 @@ async function handleCreate() {
     rotation: 0,
     opacity: 1,
   };
-  try {
-    const created = await createNote(payload);
-    const createdNote = Array.isArray(created) ? created[0] : created;
-    notes = [createdNote, ...notes].filter(Boolean);
-    renderNotes();
-  } catch (error) {
-    showToast("Not oluşturulamadı");
-  }
+  openDrawer(draftNote);
 }
 
 async function handleDelete(noteId) {
@@ -299,10 +293,6 @@ async function handleDelete(noteId) {
 
 async function handleSave(event) {
   event.preventDefault();
-  const note = notes.find((item) => item.id === activeNoteId);
-  if (!note) {
-    return;
-  }
   const patch = {
     title: titleInput.value.trim(),
     content: contentInput.value.trim(),
@@ -313,16 +303,31 @@ async function handleSave(event) {
     opacity: Number(opacityInput.value),
   };
 
+  const isCreating = Boolean(draftNote);
   try {
-    const updated = await updateNote(note.id, patch);
-    const updatedNote = Array.isArray(updated) ? updated[0] : updated;
-    notes = notes.map((item) =>
-      item.id === note.id ? { ...item, ...(updatedNote || patch) } : item
-    );
+    if (isCreating) {
+      const payload = {
+        ...draftNote,
+        ...patch,
+      };
+      const created = await createNote(payload);
+      const createdNote = Array.isArray(created) ? created[0] : created;
+      notes = [createdNote, ...notes].filter(Boolean);
+    } else {
+      const note = notes.find((item) => item.id === activeNoteId);
+      if (!note) {
+        return;
+      }
+      const updated = await updateNote(note.id, patch);
+      const updatedNote = Array.isArray(updated) ? updated[0] : updated;
+      notes = notes.map((item) =>
+        item.id === note.id ? { ...item, ...(updatedNote || patch) } : item
+      );
+    }
     renderNotes();
     closeDrawer();
   } catch (error) {
-    showToast("Not güncellenemedi");
+    showToast(isCreating ? "Not oluşturulamadı" : "Not güncellenemedi");
   }
 }
 
