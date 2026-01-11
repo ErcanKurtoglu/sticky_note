@@ -1,6 +1,11 @@
+function getTokenFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("token");
+}
+
 const config = {
   baseUrl: "https://socket.supsis.live/api/customer/v1/module",
-  token: "YOUR_SUPSIS_TOKEN",
+  token: getTokenFromUrl() || "YOUR_SUPSIS_TOKEN",
   moduleName: "sticky_notes",
 };
 
